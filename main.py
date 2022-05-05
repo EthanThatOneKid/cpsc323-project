@@ -515,24 +515,24 @@ def consume_program(toks: list[Token]) -> ProgramState:
     return program
 
   return program
-  
+
 sample_code1 = """program a2022;
-var
-a1 , b2a , wc, ba12  integer;
+va
+a1 , b2a,  wc, ba12 : integer;
 begin
 end."""
 
-sample_code2 = """program a2022;
-var
-a1 , b2a , wc, ba12 : integer;
-begin
-a1 = 3;
-b2a = 4;
-wc = 5 ;
-write(wc ); 
-ba12 = a1 * (b2a + 2 * wc)
-write("value=", ba12 ); 
-end."""
+# sample_code2 = """program a2022;
+# var
+# a1 , b2a , wc, ba12 : integer;
+# begin
+# a1 = 3;
+# b2a = 4;
+# wc = 5 ;
+# write(wc ); 
+# ba12 = a1 * (b2a + 2 * wc)
+# write("value=", ba12 ); 
+# end."""
 
 toks = tokenize(sample_code1)
 program = consume_program(toks)

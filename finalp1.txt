@@ -1,0 +1,16 @@
+program a2022;
+/* This program computes and prints the value
+   of a given expression */
+var
+  /* declare variables */
+  a1 ,    b2a ,    wc, ba12   : integer;
+begin
+     a1     =3;
+     b2a=    4;
+     wc    = 5   ;
+   write(wc ); /* display wc*/
+
+     /* compute the value of this expression */
+     ba12 = a1 * (b2a + 2 * wc)
+     write("value=",     ba12  ); /* print the value of ba12 */
+   end.
