@@ -21,12 +21,12 @@ LITERAL_DIVISION = "/"
 
 class Token:
   def debug(self):
-      pass
     # if hasattr(self, "keyword"): print(self.keyword)
     # elif hasattr(self, "id"): print(self.id)
     # elif hasattr(self, "sign"): print(self.sign)
     # elif hasattr(self, "marking"): print(self.marking)
     # elif hasattr(self, "content"): print(self.content)
+    pass
   
   def vdebug(self):
     if hasattr(self, "keyword"): print(f"keyword: '{self.keyword}'.")
@@ -143,12 +143,7 @@ def tokenize(program: str):
   return tokens
 
 class State:
-    pass
-#   def debug(self):
-#     if hasattr(self, "sign"): print(self.sign)
-#     elif hasattr(self, "digit"): print(self.digit)
-#     elif hasattr(self, "statement"): print(self.statement)
-#     elif hasattr(self, "statement_list"): print(self.statement_list)
+  pass
 
 class DeclarationState(State):
   def __init__(self, id: IdentifierToken):
@@ -172,82 +167,90 @@ class TypeState(State):
     self.type_name = type_name
 
 class WriteState(State):
-  def __init__(
-    self,
-    custom_string: CustomStringToken,
-    id: IdentifierToken
-  ):
-    self.custom_string = custom_string
+  def __init__(self):
+    self.custom_string = None
+    self.id = None
+  def set_id(self, id: IdentifierToken):
     self.id = id
+  def set_custom_string(self, custom_string: CustomStringToken):
+    self.custom_string = custom_string
+
+class NumberState(State):
+  def __init__(self):
+    self.sign = None
+    self.digits = None
+  def set_sign(self, sign: SignToken):
+    self.sign = sign
+  def set_digits(self, digits: DigitsToken):
+    self.digits = digits
+
+class FactorState(State):
+  def __init__(self):
+    self.id = None # Either this one
+    self.num = None # Or that one
+    self.expression = None # Or even that one
+    # (One is populated while the others are None)
+  def set_id(self, id: IdentifierToken):
+    self.id = id
+  def set_num(self, num: NumberState):
+    self.num = num
+  def set_expression(self, expression: 'ExpressionState'):
+    self.expression = expression
+
+class TermState(State):
+  def __init__(self):
+    self.factor = None
+    self.sign = None # * or /
+    self.term = None
+  def set_factor(self, factor: FactorState):
+    self.factor = factor
+  def set_sign(self, sign: SignToken):
+    self.sign = sign
+  def set_term(self, term: 'TermState'):
+    self.term = term
+
+class ExpressionState(State):
+  def __init__(self):
+    self.expression = None
+    self.sign = None # + or -
+    self.term = None
+  def set_expression(self, expr: 'ExpressionState'):
+    self.expression = expr
+  def set_sign(self, sign: SignToken):
+    self.sign = sign
+  def set_term(self, term: TermState):
+    self.term = term
 
 class AssignState(State):
-  def __init__(
-    self,
-    id: IdentifierToken,
-    expression: 'ExpressionState'
-  ):
+  def __init__(self):
+    self.id = None
+    self.expression = None
+  def set_id(self, id: IdentifierToken):
     self.id = id
+  def set_expression(self, expression: ExpressionState):
     self.expression = expression
 
 class StatementState(State):
-  def __init__(self, write: WriteState, assign: AssignState):
-    self.write = write # Either this one
-    self.assign = assign # Or that one
+  def __init__(self):
+    self.write = None # Either this one
+    self.assign = None # Or that one
     # (One is populated while the other is None)
+  def set_write(self, write: WriteState):
+    self.write = write
+  def set_assign(self, assign: AssignState):
+    self.assign = assign
 
 class StatListState(State):
-  def __init__(
-    self,
-    statement: StatementState,
-    statement_list: 'StatListState' = ()
-  ):
-    self.statement = statement
-    self.statement_list = statement_list # Optional
+  def __init__(self):
+    self.statements = []
+  def append_stat(self, statement: StatementState):
+    self.statements.append(statement)
 
 class ExprListState(State):
-  def __init__(
-    self,
-    custom_string: CustomStringToken,
-    id: IdentifierToken
-  ):
-    self.custom_string = custom_string
-    self.id = id
-
-class NumberState(State):
-  def __init__(self, sign: SignToken, digits: DigitsToken):
-    self.sign = sign
-    self.digits = digits
-
-class TermState(State):
-  def __init__(
-    self,
-    factor: 'FactorState',
-    term: 'TermState' = ()
-  ):
-    self.factor = factor
-    self.term = term
-
-class FactorState(State):
-  def __init__(
-    self,
-    id: IdentifierToken = (),
-    num: NumberState = (),
-    expression: 'ExpressionState' = (),
-  ):
-    self.id = id
-    self.num = num
-    self.expression = expression
-
-class ExpressionState(State):
-  def __init__(
-    self,
-    term: TermState,
-    sign: SignToken = (), 
-    expression: 'ExpressionState' = ()
-  ):
-    self.term = term
-    self.sign = sign # Optional
-    self.expression = expression # Optional
+  def __init__(self):
+    self.expressions = []
+  def append_expression(self, expression: ExpressionState):
+    self.expressions.append(expression)
 
 class ProgramState(State):
   def set_id(self, id: IdentifierToken):
@@ -258,7 +261,7 @@ class ProgramState(State):
     self.stat_list = stat_list
   def debug(self):
     print(f"ProgramState({self.id.id})")
-    self.dec_list.debug()
+    # self.dec_list.debug()
     # self.stat_list.debug()
 
 class CustomStringState(State):
@@ -283,6 +286,122 @@ def eat(toks: list[Token]) -> tuple[Token, list[Token]]:
     next_token = toks[0]
     return next_token, toks[1:]
   return (), []
+
+def consume_write(toks: list[Token]) -> tuple[WriteState, list[Token]]:
+  write_state = WriteState()
+
+  curr_tok, toks = eat(toks)
+  curr_tok.debug()
+  is_ok = isinstance(curr_tok, PunctuationToken) and curr_tok.marking == LITERAL_OPEN_PARENTHESIS
+  if not is_ok:
+    print_cpsc323error(LITERAL_OPEN_PARENTHESIS)
+    return None, toks
+    
+  curr_tok, toks = eat(toks)
+  curr_tok.debug()
+  is_ok = isinstance(curr_tok, CustomStringToken)
+  if not is_ok:
+    print_cpsc323error()
+    return None, toks
+  write_state.set_custom_string(curr_tok)
+
+  curr_tok, toks = eat(toks)
+  curr_tok.debug()
+  is_ok = isinstance(curr_tok, PunctuationToken) and curr_tok.marking == LITERAL_COMMA
+  if not is_ok:
+    print_cpsc323error(LITERAL_COMMA)
+    return None, toks
+
+  curr_tok, toks = eat(toks)
+  curr_tok.debug()
+  is_ok = isinstance(curr_tok, IdentifierToken)
+  if not is_ok:
+    print_cpsc323error()
+    return None, toks
+  write_state.set_id(curr_tok)
+
+  curr_tok, toks = eat(toks)
+  curr_tok.debug()
+  is_ok = isinstance(curr_tok, PunctuationToken) and curr_tok.marking == LITERAL_CLOSE_PARENTHESIS
+  if not is_ok:
+    print_cpsc323error(LITERAL_CLOSE_PARENTHESIS)
+    return None, toks
+
+  return write_state
+
+def consume_expression(toks: list[Token]) -> tuple[ExpressionState, list[Token]]:
+  curr_tok, toks = eat(toks)
+  curr_tok.debug()
+  is_id = isinstance(curr_tok, IdentifierToken)
+  is_num = isinstance(curr_tok, NumberState)
+  is_open_paren = isinstance(curr_tok, PunctuationToken) and curr_tok.marking == LITERAL_OPEN_PARENTHESIS
+  is_ok = is_id or is_num or is_open_paren
+  if not is_ok:
+    print_cpsc323error()
+    return None, toks
+
+def consume_assign(toks: list[Token], id: IdentifierToken) -> tuple[AssignState, list[Token]]:
+  assign_state = AssignState()
+  assign_state.set_id(id)
+  
+  curr_tok, toks = eat(toks)
+  curr_tok.debug()
+  is_ok = isinstance(curr_tok, PunctuationToken) and curr_tok.marking == LITERAL_EQUAL
+  if not is_ok:
+    print_cpsc323error(LITERAL_EQUAL)
+    return None, toks
+
+  curr_tok, toks = eat(toks)
+  curr_tok.debug()
+  is_ok = isinstance(curr_tok, PunctuationToken) and curr_tok.marking == LITERAL_EQUAL
+  if not is_ok:
+    print_cpsc323error(LITERAL_EQUAL)
+    return None, toks
+  
+  expression, toks = consume_expression(toks)
+  is_ok = expression is not None
+  if not is_ok:
+    return None, toks
+  assign_state.set_expression(expression)
+
+  return assign_state, toks
+
+def consume_stat_list(toks: list[Token]) -> tuple[StatListState, list[Token]]:
+  stat_list = StatListState()
+
+  while True:
+    curr_stat = StatementState()
+    curr_tok, toks = eat(toks)
+    is_write = isinstance(curr_tok, KeywordToken) and curr_tok.keyword == LITERAL_WRITE
+    is_assign = isinstance(curr_tok, IdentifierToken)
+    is_ok = is_write or is_assign
+    if not is_ok:
+      print_cpsc323error()
+      return None, toks
+    
+    if is_write:
+      write_state, toks = consume_write(toks)
+      is_ok = write_state is not None
+      if not is_ok:
+        print_cpsc323error()
+        return None, toks
+      curr_stat.set_write(write_state)
+    elif is_assign:
+      assign_state, toks = consume_assign(toks, curr_tok)
+      is_ok = assign_state is not None
+      if not is_ok:
+        print_cpsc323error()
+        return None, toks
+      curr_stat.set_assign(assign_state)
+    
+    # Consume semicolon
+    curr_tok, toks = eat(toks)
+    is_ok = isinstance(curr_tok, PunctuationToken) and curr_tok.marking == LITERAL_SEMICOLON
+    if not is_ok:
+      print_cpsc323error(LITERAL_SEMICOLON)
+      return None, toks
+
+    return stat_list, toks
 
 def consume_dec_list(toks: list[Token]) -> tuple[DecListState, list[Token]]:
   dec_list = DecListState()
@@ -323,7 +442,7 @@ def consume_dec_list(toks: list[Token]) -> tuple[DecListState, list[Token]]:
     return None, toks
 
   return dec_list, toks
-  
+
 # Construct the AST (Abstract Syntax Tree) from the list of tokens.
 def consume_program(toks: list[Token]) -> ProgramState:
   program = ProgramState()
@@ -370,6 +489,7 @@ def consume_program(toks: list[Token]) -> ProgramState:
     print_cpsc323error(LITERAL_BEGIN)
     return program
 
+#   Un-Comment this to consume statements
 #   stat_list, toks = consume_stat_list(toks)
 #   is_ok = stat_list is not None
 #   if not is_ok:
@@ -394,7 +514,7 @@ def consume_program(toks: list[Token]) -> ProgramState:
   
 sample_code1 = """program a2022;
 var
-a1 , b2a , wc, ba12 : integer;
+a1 , b2a , wc, ba12  integer;
 begin
 end."""
 
@@ -412,4 +532,4 @@ end."""
 
 toks = tokenize(sample_code1)
 program = consume_program(toks)
-# program.debug()
+program.debug()
