@@ -1,3 +1,7 @@
+#!/usr/bin/python
+# Project: CPSC 323 Part 2
+# Authors: Karnikaa Velumani, Ethan Davidson
+
 # Tokenization
 LITERAL_PROGRAM = "program"
 LITERAL_VAR = "var"
